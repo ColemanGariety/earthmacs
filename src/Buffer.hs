@@ -1,13 +1,11 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Buffer (Buffer(Buffer), Name(View), getLns, drawBuffer, handleBufferEvent) where
+module Buffer (Buffer(Buffer), drawBuffer, handleBufferEvent) where
 
 import Data.Label
 import qualified Brick.Types as T
 import Brick.Widgets.Core
 import Brick.Widgets.Border.Style
 import Brick.Widgets.Border
-
-data Name = View deriving (Ord, Show, Eq)
 
 data Buffer =
   Buffer { _lns :: [String]
@@ -16,11 +14,7 @@ data Buffer =
 
 mkLabel ''Buffer
 
-updateFoo = set lns ["foo"]
-
-getLns buffer = get lns buffer
-
-drawBuffer buffer = viewport View T.Vertical $ str (head (getLns buffer))
+drawBuffer buffer = str (head (get lns buffer))
 
 handleBufferEvent buffer ev =
   case ev of

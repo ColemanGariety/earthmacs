@@ -2,7 +2,7 @@
 module Window (Window(Window), Split(Split), Mode(Normal), Direction, Name, handleWindowEvent, drawWindow) where
 
 import Data.Label
-import Graphics.Vty hiding (Mode)
+import Graphics.Vty hiding (Mode, showCursor)
 import qualified Brick.Widgets.Center as C
 import qualified Brick.Widgets.Border as B
 import qualified Brick.Types as T
@@ -17,6 +17,8 @@ data Direction = Horizontal | Vertical
 
 data Mode = Normal | Insert
 
+data Name = V0 | V1 | V2 | V3 | V4 | V5 | V6 | V7 | V8 | V9 deriving (Ord, Show, Eq)
+
 data Split =
   Split { _direction :: Maybe Direction
         , _left :: Maybe Split
@@ -28,8 +30,7 @@ data Split =
 data Window =
   Window { _split :: Split
          , _buffer :: Buffer
-         , _x :: Int
-         , _y :: Int
+         , _cursor :: (Int, Int)
          , _scroll_y :: Int
          , _column :: Int
          , _mode :: Mode
@@ -41,23 +42,18 @@ mkLabel ''Window
 
 handleWindowEvent window ev =
   case ev of
-    V.EvKey (V.KChar 'h') [] -> modify x (\x -> x - 1) window
-    V.EvKey (V.KChar 'j') [] -> modify y (+1) window
-    V.EvKey (V.KChar 'k') [] -> modify y (\y -> y - 1) window
-    V.EvKey (V.KChar 'l') [] -> modify x (+1) window
+    V.EvKey (V.KChar 'h') [] -> modify cursor (\(x,y) -> (x - 1, y)) window
+    V.EvKey (V.KChar 'j') [] -> modify cursor (\(x,y) -> (x, y + 1)) window
+    V.EvKey (V.KChar 'k') [] -> modify cursor (\(x,y) -> (x, y - 1)) window
+    V.EvKey (V.KChar 'l') [] -> modify cursor (\(x,y) -> (x + 1, y)) window
     _ -> set buffer (handleBufferEvent (get buffer window) ev) window
 
--- drawSplit split width height x y =
---   case get direction split of
---     Just direction -> do
---       case direction of
---         Horizontal -> return $ C.center ((viewport View T.Vertical $ str "left") <+> (viewport View T.Vertical $ str "right"))
---         Vertical -> return $ C.center ((viewport View T.Vertical $ str "top") <+> (viewport View T.Vertical $ str "bottom"))
---     Nothing -> do
---       let Just activeWindow = get window split
---       let activeBuffer = get buffer activeWindow
---       let w = viewport View T.Vertical $ str (head (getLns activeBuffer))
---       return $ withBorderStyle Brick.Widgets.Border.Style.unicodeBold $ Brick.Widgets.Border.border $ C.center $ w
-
 drawWindow window width height x y = do
-  return . withBorderStyle unicodeBold . border . C.center $ drawBuffer (get buffer window)
+  let string = drawBuffer (get buffer window)
+  return $
+    withBorderStyle unicodeBold $
+    border $
+    C.center $
+    (viewport V1 T.Vertical) $
+    showCursor V1 (T.Location (get cursor window)) $
+    string
