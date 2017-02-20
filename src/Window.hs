@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Window (Window(Window),
                Mode(Normal),
-               Name,
+               Name(V1),
                handleWindowEvent,
                drawWindow) where
 
@@ -24,8 +24,7 @@ data Name = V0 | V1 | V2 | V3 | V4 | V5 | V6 | V7 | V8 | V9 deriving (Ord, Show,
 data Window =
   Window { _buffer :: Buffer
          , _cursor :: (Int, Int)
-         , _scroll_y :: Int
-         , _column :: Int
+         , _scroll :: (Int, Int)
          , _mode :: Mode
          , _mark :: Maybe (Int, Int)
          }
@@ -33,7 +32,10 @@ data Window =
 mkLabel ''Window
 
 handleWindowEvent window ev =
-  updateCursor $ updateBuffer $ case (get mode window) of
+  updateViewport $
+  updateCursor $
+  updateBuffer $
+  case (get mode window) of
     Normal ->
       case ev of
         V.EvKey (V.KChar '0') [] -> moveBol window
@@ -59,13 +61,12 @@ handleWindowEvent window ev =
         _ -> normalMode window
 
 drawWindow window width height x y = do
-  let string = drawBuffer (get buffer window)
   withBorderStyle unicodeBold $
     border $
     C.center $
     (viewport V1 T.Vertical) $
     showCursor V1 (T.Location (get cursor window)) $
-    string
+    drawBuffer (get buffer window) (get scroll window)
 
 updateBuffer window =
   let ls = getLines (get buffer window)
@@ -84,6 +85,13 @@ updateCursor window =
                _ -> (length l) - 1
       updatedX = max 0 (min xcap x)
   in set cursor (updatedX, updatedY) window
+
+updateViewport window =
+  let (x, y) = get cursor window
+      (scrollX, scrollY) = get scroll window
+  in if False
+     then modify scroll (\(x, y) -> (x, y + 1)) window
+     else window
 
 -- these will be available to the user --
 

@@ -28,4 +28,4 @@ handleEvent state (T.VtyEvent ev) =
       M.continue $ set split (handleSplitEvent (get split state) ev) state
 
 drawEditor state = do
-  return $ drawSplit (get split state) 50 50 0 0
+  return $ drawSplit (get split state) 10 10 0 0

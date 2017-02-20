@@ -23,8 +23,7 @@ data Buffer =
 
 mkLabel ''Buffer
 
-drawBuffer :: Buffer -> T.Widget n
-drawBuffer buffer = str (unlines (get lns buffer))
+drawBuffer buffer (scrollX, scrollY) = str (unlines (drop scrollY (get lns buffer)))
 
 oneLine :: Buffer -> Buffer
 oneLine buffer = set lns [""] buffer

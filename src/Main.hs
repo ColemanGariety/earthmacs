@@ -14,7 +14,7 @@ getInitialState :: Editor
 getInitialState =
   Editor [welcomeBuffer] rootSplit 
   where welcomeBuffer = Buffer ["Earthmacs welcomes you in."] "/home/coleman/Git"
-        welcomeWindow = Window welcomeBuffer (0, 0) 0 0 Normal Nothing
+        welcomeWindow = Window welcomeBuffer (0, 0) (0, 0) Normal Nothing
         rootSplit = Split Nothing Nothing Nothing (Just welcomeWindow)
 
 app :: M.App Editor e Name
