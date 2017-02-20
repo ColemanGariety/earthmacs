@@ -5,16 +5,17 @@ import Brick.Main as M
 import Brick.AttrMap (attrMap)
 import qualified Graphics.Vty as V
 
+import Split
 import Editor
 import Buffer
 import Window
 
 getInitialState :: Editor
 getInitialState =
-  Editor [welcomeBuffer] rootSplit welcomeWindow
+  Editor [welcomeBuffer] rootSplit 
   where welcomeBuffer = Buffer ["Earthmacs welcomes you in."] "/home/coleman/Git"
-        welcomeWindow = Window rootSplit welcomeBuffer (0, 0) 0 0 Normal Nothing
-        rootSplit = Split Nothing Nothing Nothing Nothing (Just welcomeWindow)
+        welcomeWindow = Window welcomeBuffer (0, 0) 0 0 Normal Nothing
+        rootSplit = Split Nothing Nothing Nothing (Just welcomeWindow)
 
 app :: M.App Editor e Name
 app =

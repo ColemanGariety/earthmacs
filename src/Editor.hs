@@ -9,13 +9,13 @@ import qualified Brick.Types as T
 import qualified Brick.Main as M
 import qualified Graphics.Vty as V
 
-import Buffer
+import Split
 import Window
+import Buffer
 
 data Editor =
   Editor { _buffers :: [Buffer]
          , _split :: Split
-         , _active :: Window
          }
 
 mkLabel ''Editor
@@ -25,7 +25,7 @@ handleEvent state (T.VtyEvent ev) =
   case ev of
     V.EvKey (V.KChar 'c') [MCtrl] -> M.halt state
     _ -> do
-      M.continue $ set active (handleWindowEvent (get active state) ev) state
+      M.continue $ set split (handleSplitEvent (get split state) ev) state
 
 drawEditor state = do
-  drawWindow (get active state) 50 50 0 0
+  return $ drawSplit (get split state) 50 50 0 0
