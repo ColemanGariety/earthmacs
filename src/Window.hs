@@ -33,13 +33,13 @@ data Window =
 mkLabel ''Window
 
 handleWindowEvent window ev =
-  case (get mode window) of
+  updateCursor $ case (get mode window) of
     Normal ->
       case ev of
         V.EvKey (V.KChar '0') [] -> moveBol window
-        V.EvKey (V.KChar 'A') [] -> moveEol $ set mode Insert window
+        V.EvKey (V.KChar 'A') [] -> append window
         V.EvKey (V.KChar 'h') [] -> moveLeft window 
-        V.EvKey (V.KChar 'i') [] -> set mode Insert window
+        V.EvKey (V.KChar 'i') [] -> insert window
         V.EvKey (V.KChar 'j') [] -> moveDown window
         V.EvKey (V.KChar 'k') [] -> moveUp window
         V.EvKey (V.KChar 'l') [] -> moveRight window
@@ -62,6 +62,15 @@ drawWindow window width height x y = do
     showCursor V1 (T.Location (get cursor window)) $
     string
 
+updateCursor window =
+  let (x, y) = get cursor window
+      l = lineAt (get buffer window) (x, y)
+  in case (get mode window) of
+       Insert -> set cursor (max 0 (min (length l) x), y) window
+       Normal -> set cursor (max 0 (min ((length l) - 1) x), y) window
+
+-- these will be available to the user --
+
 moveLeft = modify cursor (\(x,y) -> (x - 1, y))
 moveDown = modify cursor (\(x,y) -> (x, y + 1))
 moveUp = modify cursor (\(x,y) -> (x, y - 1))
@@ -70,6 +79,13 @@ moveBol window = set cursor (0, (snd (get cursor window))) window
 moveEol window = set cursor (length (lineAt (get buffer window)(get cursor window)),
                              (snd (get cursor window))) window
 
+append :: Window -> Window
+append window = moveEol $ set mode Insert window
+
+insert :: Window -> Window
+insert = set mode Insert
+
+forwardDelete :: Window -> Window
 forwardDelete window =
   let (x, y) = get cursor window
   in if x == 0
@@ -77,6 +93,7 @@ forwardDelete window =
      else let win = removeCharAtCursor window
           in moveRight win
   
+backwardDelete :: Window -> Window
 backwardDelete window =
   let (x, y) = get cursor window
   in if x == 0
@@ -86,24 +103,27 @@ backwardDelete window =
                in moveEol (moveUp win)
      else removePrevCharAtCursor window
 
+leaveInsertMode :: Window -> Window
 leaveInsertMode window =
   let win = set mode Normal window
   in moveLeft win
 
+addCharAtCursor :: Char -> Window -> Window
 addCharAtCursor char window =
   let win = set buffer (insertCharAt (get buffer window) char (get cursor window)) window
   in moveRight win
   
+addLineAtCursor :: Window -> Window
 addLineAtCursor window =
   let win = set buffer (insertLineAt (get buffer window) (get cursor window)) window
   in moveBol (moveDown win)
 
-addEventAtCursor _ window = window
-
+removeCharAtCursor :: Window -> Window
 removeCharAtCursor window =
   let win = set buffer (deleteCharAt (get buffer window) (get cursor window)) window
   in moveLeft win
 
+removePrevCharAtCursor :: Window -> Window
 removePrevCharAtCursor window =
   let (x, y) = get cursor window
       win = set buffer (deleteCharAt (get buffer window) (x - 1, y)) window
