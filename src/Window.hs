@@ -17,7 +17,7 @@ import Brick.Widgets.Border
 
 import Buffer
 
-data Mode = Normal | Insert
+data Mode = Normal | Insert | Delete deriving (Show, Eq)
 
 data Name = V0 | V1 | V2 | V3 | V4 | V5 | V6 | V7 | V8 | V9 deriving (Ord, Show, Eq)
 
@@ -33,13 +33,14 @@ data Window =
 mkLabel ''Window
 
 handleWindowEvent window ev =
-  updateCursor $ case (get mode window) of
+  updateCursor $ updateBuffer $ case (get mode window) of
     Normal ->
       case ev of
         V.EvKey (V.KChar '0') [] -> moveBol window
         V.EvKey (V.KChar 'A') [] -> append window
-        V.EvKey (V.KChar 'h') [] -> moveLeft window 
-        V.EvKey (V.KChar 'i') [] -> insert window
+        V.EvKey (V.KChar 'd') [] -> deleteMode window
+        V.EvKey (V.KChar 'h') [] -> moveLeft window
+        V.EvKey (V.KChar 'i') [] -> insertMode window
         V.EvKey (V.KChar 'j') [] -> moveDown window
         V.EvKey (V.KChar 'k') [] -> moveUp window
         V.EvKey (V.KChar 'l') [] -> moveRight window
@@ -47,11 +48,15 @@ handleWindowEvent window ev =
         _ -> window
     Insert ->
       case ev of
-        V.EvKey V.KEsc [] -> leaveInsertMode window
+        V.EvKey V.KEsc [] -> normalMode window
         V.EvKey V.KBS [] -> backwardDelete window
         V.EvKey V.KEnter [] -> addLineAtCursor window
         _ -> let (V.EvKey (V.KChar char) []) = ev
              in addCharAtCursor char window
+    Delete ->
+      case ev of
+        V.EvKey (V.KChar 'd') [] -> removeLineAtCursor window
+        _ -> normalMode window
 
 drawWindow window width height x y = do
   let string = drawBuffer (get buffer window)
@@ -62,12 +67,23 @@ drawWindow window width height x y = do
     showCursor V1 (T.Location (get cursor window)) $
     string
 
+updateBuffer window =
+  let ls = getLines (get buffer window)
+  in if length ls == 0
+     then set buffer (oneLine (get buffer window)) window
+     else window
+
 updateCursor window =
   let (x, y) = get cursor window
-      l = lineAt (get buffer window) (x, y)
-  in case (get mode window) of
-       Insert -> set cursor (max 0 (min (length l) x), y) window
-       Normal -> set cursor (max 0 (min ((length l) - 1) x), y) window
+      ls = getLines (get buffer window)
+      ycap = (length ls) - 1
+      updatedY = (max 0 (min ycap y))
+      l = lineAt (get buffer window) (x, updatedY)
+      xcap = case (get mode window) of
+               Insert -> length l
+               _ -> (length l) - 1
+      updatedX = max 0 (min xcap x)
+  in set cursor (updatedX, updatedY) window
 
 -- these will be available to the user --
 
@@ -82,8 +98,15 @@ moveEol window = set cursor (length (lineAt (get buffer window)(get cursor windo
 append :: Window -> Window
 append window = moveEol $ set mode Insert window
 
-insert :: Window -> Window
-insert = set mode Insert
+insertMode :: Window -> Window
+insertMode = set mode Insert
+deleteMode :: Window -> Window
+deleteMode = set mode Delete
+normalMode :: Window -> Window
+normalMode window =
+  let win = set mode Normal window
+  in moveLeft win
+
 
 forwardDelete :: Window -> Window
 forwardDelete window =
@@ -103,11 +126,6 @@ backwardDelete window =
                in moveEol (moveUp win)
      else removePrevCharAtCursor window
 
-leaveInsertMode :: Window -> Window
-leaveInsertMode window =
-  let win = set mode Normal window
-  in moveLeft win
-
 addCharAtCursor :: Char -> Window -> Window
 addCharAtCursor char window =
   let win = set buffer (insertCharAt (get buffer window) char (get cursor window)) window
@@ -117,6 +135,11 @@ addLineAtCursor :: Window -> Window
 addLineAtCursor window =
   let win = set buffer (insertLineAt (get buffer window) (get cursor window)) window
   in moveBol (moveDown win)
+
+removeLineAtCursor :: Window -> Window
+removeLineAtCursor window =
+  let win = set buffer (deleteLineAt (get buffer window) (get cursor window)) window
+  in normalMode win
 
 removeCharAtCursor :: Window -> Window
 removeCharAtCursor window =

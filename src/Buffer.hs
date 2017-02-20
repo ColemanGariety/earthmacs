@@ -1,6 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Buffer (Buffer(Buffer),
                drawBuffer,
+               oneLine,
+               getLines,
+               getPath,
                charAt,
                lineAt,
                insertCharAt,
@@ -22,6 +25,15 @@ mkLabel ''Buffer
 
 drawBuffer :: Buffer -> T.Widget n
 drawBuffer buffer = str (unlines (get lns buffer))
+
+oneLine :: Buffer -> Buffer
+oneLine buffer = set lns [""] buffer
+
+getLines :: Buffer -> [String]
+getLines = get lns
+
+getPath :: Buffer -> String
+getPath = get path
 
 charAt :: Buffer -> (Int, Int) -> Char
 charAt buffer (x, y) = ((get lns buffer)!!y)!!x

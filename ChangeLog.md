@@ -1,4 +1,4 @@
-# Revision history for earthmacs-hs
+# Revision history for earthmacs
 
 ## 0.1.0.0  -- YYYY-mm-dd
 
