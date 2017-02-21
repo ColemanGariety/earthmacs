@@ -20,7 +20,7 @@ import Buffer
 
 data Mode = Normal | Insert | Delete deriving (Show, Eq)
 
-data Name = V0 | V1 | V2 | V3 | V4 | V5 | V6 | V7 | V8 | V9 deriving (Ord, Show, Eq)
+data Name = V1 | V2 | V3 | V4 | V5 | V6 | V7 | V8 | V9 deriving (Ord, Show, Eq)
 
 data Window =
   Window { _buffer :: Buffer
@@ -41,7 +41,9 @@ handleWindowEvent window ev (width, height) =
       case ev of
         V.EvKey (V.KChar '0') [] -> moveBol window
         V.EvKey (V.KChar 'A') [] -> append window
+        V.EvKey (V.KChar 'b') [MCtrl] -> moveUpBy (height - 1) window
         V.EvKey (V.KChar 'd') [] -> deleteMode window
+        V.EvKey (V.KChar 'f') [MCtrl] -> moveDownBy (height - 1) window
         V.EvKey (V.KChar 'h') [] -> moveLeft window
         V.EvKey (V.KChar 'i') [] -> insertMode window
         V.EvKey (V.KChar 'j') [] -> moveDown window
@@ -84,34 +86,48 @@ updateCursor :: Window -> Window
 updateCursor window =
   let (x, y) = get cursor window
       ls = getLines (get buffer window)
-      ycap = (length ls) - 1
-      updatedY = (max 0 (min ycap y))
+      yCap = (length ls) - 1
       l = lineAt (get buffer window) (x, updatedY)
-      xcap = case (get mode window) of
+      xCap = case (get mode window) of
                Insert -> length l
                _ -> (length l) - 1
-      updatedX = max 0 (min xcap x)
+      updatedX = max 0 (min xCap x)
+      updatedY = max 0 (min yCap y)
   in set cursor (updatedX, updatedY) window
 
 updateViewport :: (t, Int) -> Window -> Window
 updateViewport (width, height) window =
-  let (x, y) = get cursor window
+  let (cursorX, cursorY) = get cursor window
       (scrollX, scrollY) = get scroll window
-  in if y - scrollY == height
-     then modify scroll (\(x, y) -> (x, y + 1)) window
-     else if y - scrollY == -1
-          then modify scroll (\(x, y) -> (x, y - 1)) window
+      yMax = ((length (getLines (get buffer window))) - height)
+      yMin = 0
+  in if (cursorY - scrollY >= height)
+     then modify scroll (\(x, y) -> (x, min yMax (cursorY - height + 1))) window
+     else if (cursorY - scrollY) < 0
+          then modify scroll (\(x, y) -> (x, max yMin cursorY)) window
           else window
 
 -- these will be available to the user --
 
+moveLeft :: Window -> Window
 moveLeft = modify cursor (\(x,y) -> (x - 1, y))
+moveDown :: Window -> Window
 moveDown = modify cursor (\(x,y) -> (x, y + 1))
+moveUp :: Window -> Window
 moveUp = modify cursor (\(x,y) -> (x, y - 1))
+moveRight :: Window -> Window
 moveRight = modify cursor (\(x,y) -> (x + 1, y))
+moveBol :: Window -> Window
 moveBol window = set cursor (0, (snd (get cursor window))) window
+moveEol :: Window -> Window
 moveEol window = set cursor (length (lineAt (get buffer window)(get cursor window)),
                              (snd (get cursor window))) window
+
+moveDownBy 0 window = window
+moveDownBy height window = moveDownBy (height - 1) (moveDown window)
+
+moveUpBy 0 window = window
+moveUpBy height window = moveUpBy (height - 1) (moveUp window)
 
 append :: Window -> Window
 append window = moveEol $ set mode Insert window

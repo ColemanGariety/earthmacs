@@ -1,6 +1,4 @@
 {-# LANGUAGE TemplateHaskell #-}
-
-
 module Editor (Editor(Editor), drawEditor, handleEvent) where
 
 import Data.Label
