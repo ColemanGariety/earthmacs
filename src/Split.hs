@@ -19,12 +19,11 @@ data Split =
 
 mkLabel ''Split
 
-handleSplitEvent :: Split -> V.Event -> Split
-handleSplitEvent split ev =
+handleSplitEvent split ev (width, height) =
   case ev of
     _ -> do
       let Just win = get window split
-      set window (Just (handleWindowEvent win ev)) split
+      set window (Just (handleWindowEvent win ev (width, height))) split
 
 drawSplit :: Split -> t -> t1 -> t2 -> t3 -> T.Widget Name
 drawSplit split width height x y = do

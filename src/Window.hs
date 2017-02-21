@@ -14,6 +14,7 @@ import qualified Graphics.Vty as V
 import Brick.Widgets.Core
 import Brick.Widgets.Border.Style
 import Brick.Widgets.Border
+import Brick.Main
 
 import Buffer
 
@@ -31,9 +32,9 @@ data Window =
 
 mkLabel ''Window
 
-handleWindowEvent window ev =
-  updateViewport $
+handleWindowEvent window ev (width, height) =
   updateCursor $
+  updateViewport (width, height) $
   updateBuffer $
   case (get mode window) of
     Normal ->
@@ -60,20 +61,26 @@ handleWindowEvent window ev =
         V.EvKey (V.KChar 'd') [] -> removeLineAtCursor window
         _ -> normalMode window
 
+drawWindow :: Window -> t -> t1 -> t2 -> t3 -> T.Widget Name
 drawWindow window width height x y = do
+  let (x, y) = get cursor window
+      (scrollX, scrollY) = get scroll window
   withBorderStyle unicodeBold $
     border $
     C.center $
+    reportExtent V1 $
     (viewport V1 T.Vertical) $
-    showCursor V1 (T.Location (get cursor window)) $
-    drawBuffer (get buffer window) (get scroll window)
+    showCursor V1 (T.Location (x, y - scrollY)) $
+    drawBuffer (get buffer window) (scrollX, scrollY)
 
+updateBuffer :: Window -> Window
 updateBuffer window =
   let ls = getLines (get buffer window)
   in if length ls == 0
      then set buffer (oneLine (get buffer window)) window
      else window
 
+updateCursor :: Window -> Window
 updateCursor window =
   let (x, y) = get cursor window
       ls = getLines (get buffer window)
@@ -86,12 +93,15 @@ updateCursor window =
       updatedX = max 0 (min xcap x)
   in set cursor (updatedX, updatedY) window
 
-updateViewport window =
+updateViewport :: (t, Int) -> Window -> Window
+updateViewport (width, height) window =
   let (x, y) = get cursor window
       (scrollX, scrollY) = get scroll window
-  in if False
+  in if y - scrollY == height
      then modify scroll (\(x, y) -> (x, y + 1)) window
-     else window
+     else if y - scrollY == -1
+          then modify scroll (\(x, y) -> (x, y - 1)) window
+          else window
 
 -- these will be available to the user --
 

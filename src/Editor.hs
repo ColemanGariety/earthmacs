@@ -1,4 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
+
+
 module Editor (Editor(Editor), drawEditor, handleEvent) where
 
 import Data.Label
@@ -25,7 +27,9 @@ handleEvent state (T.VtyEvent ev) =
   case ev of
     V.EvKey (V.KChar 'c') [MCtrl] -> M.halt state
     _ -> do
-      M.continue $ set split (handleSplitEvent (get split state) ev) state
+      mExtent <- M.lookupExtent V1
+      let Just (T.Extent _ _ (width, height) _) = mExtent
+      M.continue $ set split (handleSplitEvent (get split state) ev (width, height)) state
 
 drawEditor state = do
   return $ drawSplit (get split state) 10 10 0 0
