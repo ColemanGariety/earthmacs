@@ -2,7 +2,7 @@
 module Window (Window(Window),
                Mode(Normal),
                Name(WindowID),
-               getName,
+               name,
                handleWindowEvent,
                drawWindow) where
 
@@ -11,15 +11,14 @@ import Graphics.Vty hiding (Mode, showCursor)
 import qualified Brick.Widgets.Center as C
 import qualified Brick.Widgets.Border as B
 import qualified Brick.Types as T
-import qualified Graphics.Vty as V
-import Brick.Widgets.Core as C hiding (getName)
+import Brick.Widgets.Core as C
 import Brick.Widgets.Border.Style
 import Brick.Widgets.Border
 import Brick.Main
 
 import Buffer
 
-data Mode = Normal | Insert | Delete | Visual deriving (Show, Eq)
+data Mode = Normal | Insert | ReplaceChar | Delete | Visual deriving (Show, Eq)
 
 data Name = WindowID Integer deriving (Ord, Show, Eq)
 
@@ -35,6 +34,7 @@ data Window =
 
 mkLabel ''Window
 
+handleWindowEvent :: Window -> Event -> (t, Int) -> Window
 handleWindowEvent window ev (width, height) =
   updateScroll (width, height) $
   updateCursor $
@@ -42,42 +42,45 @@ handleWindowEvent window ev (width, height) =
   case (get mode window) of
     Normal ->
       case ev of
-        V.EvKey V.KEnter [] -> moveDown window
-        V.EvKey (V.KChar '$') [] -> moveEol window
-        V.EvKey (V.KChar '0') [] -> moveBol window
-        V.EvKey (V.KChar 'A') [] -> append window
-        V.EvKey (V.KChar 'b') [MCtrl] -> moveUpBy (height - 1) window
-        V.EvKey (V.KChar 'd') [] -> deleteMode window
-        V.EvKey (V.KChar 'f') [MCtrl] -> moveDownBy (height - 1) window
-        V.EvKey (V.KChar 'h') [] -> moveLeft window
-        V.EvKey (V.KChar 'i') [] -> insertMode window
-        V.EvKey (V.KChar 'j') [] -> moveDown window
-        V.EvKey (V.KChar 'k') [] -> moveUp window
-        V.EvKey (V.KChar 'l') [] -> moveRight window
-        V.EvKey (V.KChar 'o') [] -> addLine (insertMode window)
-        V.EvKey (V.KChar 'O') [] -> addLineAbove (insertMode window)
-        V.EvKey (V.KChar 'x') [] -> forwardDelete window
+        EvKey KEnter [] -> moveDown window
+        EvKey (KChar '$') [] -> moveEol window
+        EvKey (KChar '0') [] -> moveBol window
+        EvKey (KChar 'A') [] -> append window
+        EvKey (KChar 'b') [MCtrl] -> moveUpBy (height - 1) window
+        EvKey (KChar 'd') [] -> deleteMode window
+        EvKey (KChar 'f') [MCtrl] -> moveDownBy (height - 1) window
+        EvKey (KChar 'h') [] -> moveLeft window
+        EvKey (KChar 'i') [] -> insertMode window
+        EvKey (KChar 'j') [] -> moveDown window
+        EvKey (KChar 'k') [] -> moveUp window
+        EvKey (KChar 'l') [] -> moveRight window
+        EvKey (KChar 'r') [] -> replaceCharMode window
+        EvKey (KChar 'o') [] -> addLine (insertMode window)
+        EvKey (KChar 'O') [] -> addLineAbove (insertMode window)
+        EvKey (KChar 'x') [] -> forwardDelete window
         _ -> window
+    ReplaceChar ->
+      case ev of
+        EvKey (KChar char) [] -> replaceChar char window
+        _ -> normalMode window
     Insert ->
       case ev of
-        V.EvKey V.KEsc [] -> normalMode window
-        V.EvKey V.KBS [] -> backwardDelete window
-        V.EvKey V.KEnter [] -> addLine window
-        V.EvKey (V.KChar char) [] -> addChar char window
+        EvKey KEsc [] -> normalMode window
+        EvKey KBS [] -> backwardDelete window
+        EvKey KEnter [] -> addLine window
+        EvKey (KChar char) [] -> addChar char window
         _ -> normalMode window
     Delete ->
       case ev of
-        V.EvKey (V.KChar 'd') [] -> removeLine window
+        EvKey (KChar 'd') [] -> removeLine window
         _ -> normalMode window
     Visual ->
       case ev of
-        V.EvKey (V.KChar 'h') [] -> moveLeft window
-        V.EvKey (V.KChar 'j') [] -> moveDown window
-        V.EvKey (V.KChar 'k') [] -> moveUp window
-        V.EvKey (V.KChar 'l') [] -> moveRight window
+        EvKey (KChar 'h') [] -> moveLeft window
+        EvKey (KChar 'j') [] -> moveDown window
+        EvKey (KChar 'k') [] -> moveUp window
+        EvKey (KChar 'l') [] -> moveRight window
         _ -> normalMode window
-
-getName = get name
 
 drawWindow :: Window -> t -> t1 -> t2 -> t3 -> T.Widget Name
 drawWindow window width height x y =
@@ -175,6 +178,8 @@ normalMode window =
   let win = set mode Normal window
   in moveLeft win
 
+replaceCharMode :: Window -> Window
+replaceCharMode = set mode ReplaceChar
 
 forwardDelete :: Window -> Window
 forwardDelete window =
@@ -227,3 +232,8 @@ removePrevChar window =
   let (x, y) = get cursor window
       win = set buffer (deleteCharAt (get buffer window) (x - 1, y)) window
   in moveLeft win
+
+replaceChar :: Char -> Window -> Window
+replaceChar char window =
+  let win = addChar char (forwardDelete window)
+  in normalMode win

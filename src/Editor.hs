@@ -7,7 +7,6 @@ import Data.Monoid
 import Graphics.Vty
 import qualified Brick.Types as T
 import qualified Brick.Main as M
-import qualified Graphics.Vty as V
 
 import Split
 import Window
@@ -23,9 +22,10 @@ mkLabel ''Editor
 handleEvent :: Editor -> T.BrickEvent Name e -> T.EventM Name (T.Next Editor)
 handleEvent state (T.VtyEvent ev) =
   let Just w = getWindow (get split state)
-      n = getName w
+      n = get name w
   in case ev of
-       V.EvKey (V.KChar 'c') [MCtrl] -> M.halt state
+       EvKey (KChar 'c') [MCtrl] -> M.halt state
+       EvKey (KChar 'L') [MMeta] -> do M.continue $ set split (splitEast (get split state)) state
        _ -> do
          mExtent <- M.lookupExtent n
          let (width, height) = case mExtent of
@@ -33,5 +33,6 @@ handleEvent state (T.VtyEvent ev) =
                                  Nothing -> (0, 0)
          M.continue $ set split (handleSplitEvent (get split state) ev (width, height)) state
 
+drawEditor :: Monad m => Editor -> m (T.Widget Name)
 drawEditor state = do
   return $ drawSplit (get split state) 10 10 0 0
