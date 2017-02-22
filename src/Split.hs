@@ -1,5 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Split (Split(Split), Direction, handleSplitEvent, drawSplit) where
+module Split (Split(Split),
+              Direction,
+              getWindow,
+              handleSplitEvent,
+              drawSplit) where
 
 import Data.Label
 import qualified Graphics.Vty as V
@@ -19,11 +23,11 @@ data Split =
 
 mkLabel ''Split
 
+getWindow = get window
+
 handleSplitEvent split ev (width, height) =
-  case ev of
-    _ -> do
-      let Just win = get window split
-      set window (Just (handleWindowEvent win ev (width, height))) split
+  let Just win = get window split
+  in set window (Just (handleWindowEvent win ev (width, height))) split
 
 drawSplit :: Split -> t -> t1 -> t2 -> t3 -> T.Widget Name
 drawSplit split width height x y = do

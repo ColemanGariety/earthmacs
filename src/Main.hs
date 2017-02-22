@@ -1,5 +1,6 @@
 module Main where
 
+import System.Directory
 import Control.Monad (void)
 import Brick.Main as M
 import Brick.AttrMap (attrMap)
@@ -13,8 +14,8 @@ import Window
 getInitialState :: Editor
 getInitialState =
   Editor [welcomeBuffer] rootSplit 
-  where welcomeBuffer = Buffer ["Earthmacs welcomes you in."] "/home/coleman/Git"
-        welcomeWindow = Window welcomeBuffer (0, 0) (0, 0) Normal Nothing
+  where welcomeBuffer = Buffer ["Earthmacs welcomes you in."] getCurrentDirectory
+        welcomeWindow = Window welcomeBuffer (0, 0) 0 (0, 0) Normal Nothing (WindowID 0)
         rootSplit = Split Nothing Nothing Nothing (Just welcomeWindow)
 
 app :: M.App Editor e Name
