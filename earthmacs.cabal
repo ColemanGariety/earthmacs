@@ -23,7 +23,7 @@ executable earthmacs
   build-depends:       base >=4.9 && <4.10
                      , vty
                      , brick >= 0.1.7
-                     , fclabels
+                     , lens
                      , directory
   -- hs-source-dirs:      
   default-language:    Haskell2010

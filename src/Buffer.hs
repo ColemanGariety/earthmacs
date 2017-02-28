@@ -2,9 +2,8 @@
 module Buffer (Buffer(Buffer),
                drawBuffer,
                oneLine,
-               getLines,
-               getPath,
                eol,
+               lns,
                charAt,
                lineAt,
                insertCharAt,
@@ -12,7 +11,7 @@ module Buffer (Buffer(Buffer),
                insertLineAt,
                deleteLineAt) where
 
-import Data.Label
+import Control.Lens
 import Data.List
 import qualified Brick.Types as T
 import Brick.Widgets.Core
@@ -22,9 +21,9 @@ data Buffer =
          , _path :: IO FilePath
          }
 
-mkLabel ''Buffer
+makeLenses ''Buffer
 
-drawBuffer buffer (scrollX, scrollY) = str (unlines (drop scrollY (get lns buffer)))
+drawBuffer buffer (scrollX, scrollY) = str (unlines (drop scrollY (buffer^.lns)))
 
 eol :: Buffer -> Int -> Int
 eol buffer y = length $ lineAt buffer y
@@ -32,36 +31,30 @@ eol buffer y = length $ lineAt buffer y
 oneLine :: Buffer -> Buffer
 oneLine buffer = set lns [""] buffer
 
-getLines :: Buffer -> [String]
-getLines = get lns
-
-getPath :: Buffer -> IO FilePath
-getPath = get path
-
 charAt :: Buffer -> (Int, Int) -> Char
-charAt buffer (x, y) = ((get lns buffer)!!y)!!x
+charAt buffer (x, y) = ((buffer^.lns)!!y)!!x
 
 lineAt :: Buffer -> Int -> String
-lineAt buffer y = (get lns buffer)!!y
+lineAt buffer y = (buffer^.lns)!!y
 
 insertLineAt :: Buffer -> (t, Int) -> Buffer
 insertLineAt buffer (x, y) =
-  let (as, bs) = splitAt (y + 1) (get lns buffer)
+  let (as, bs) = splitAt (y + 1) (buffer^.lns)
   in set lns (as ++ [[]] ++ bs) buffer
 
 deleteLineAt :: Buffer -> (t, Int) -> Buffer
 deleteLineAt buffer (x, y) =
-  let (as, bs) = splitAt (y + 1) (get lns buffer)
+  let (as, bs) = splitAt (y + 1) (buffer^.lns)
   in set lns ((init as) ++ bs) buffer
 
 insertCharAt :: Buffer -> Char -> (Int, Int) -> Buffer
 insertCharAt buffer char (x, y) =
-  let (as, bs) = splitAt y (get lns buffer)
+  let (as, bs) = splitAt y (buffer^.lns)
   in let (ys, zs) = splitAt x (lineAt buffer y)
      in set lns (as ++ [ys ++ [char] ++ zs] ++ (tail bs)) buffer
 
 deleteCharAt :: Buffer -> (Int, Int) -> Buffer
 deleteCharAt buffer (x, y) =
-  let (as, bs) = splitAt y (get lns buffer)
+  let (as, bs) = splitAt y (buffer^.lns)
   in let (ys, zs) = splitAt x (lineAt buffer y)
      in set lns (as ++ [ys ++ (tail zs)] ++ (tail bs)) buffer

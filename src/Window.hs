@@ -3,10 +3,11 @@ module Window (Window(Window),
                Mode(Normal),
                Name(WindowID),
                name,
+               _name,
                handleWindowEvent,
                drawWindow) where
 
-import Data.Label
+import Control.Lens
 import Graphics.Vty hiding (Mode, showCursor)
 import qualified Brick.Widgets.Center as C
 import qualified Brick.Widgets.Border as B
@@ -32,19 +33,20 @@ data Window =
          , _name :: Name
          }
 
-mkLabel ''Window
+makeLenses ''Window
 
 handleWindowEvent :: Window -> Event -> (t, Int) -> Window
 handleWindowEvent window ev (width, height) =
   updateScroll (width, height) $
   updateCursor $
   updateBuffer $
-  case (get mode window) of
+  case window^.mode of
     Normal ->
       case ev of
         EvKey KEnter [] -> moveDown window
         EvKey (KChar '$') [] -> moveEol window
         EvKey (KChar '0') [] -> moveBol window
+        EvKey (KChar 'a') [] -> moveRight $ insertMode window
         EvKey (KChar 'A') [] -> append window
         EvKey (KChar 'b') [MCtrl] -> moveUpBy (height - 1) window
         EvKey (KChar 'd') [] -> deleteMode window
@@ -84,31 +86,31 @@ handleWindowEvent window ev (width, height) =
 
 drawWindow :: Window -> t -> t1 -> t2 -> t3 -> T.Widget Name
 drawWindow window width height x y =
-  let (x, y) = get cursor window
-      (scrollX, scrollY) = get scroll window
-      n = get name window
+  let (x, y) = window^.cursor
+      (scrollX, scrollY) = window^.scroll
+      n = window^.name
   in withBorderStyle unicodeBold $
     border $
     C.center $
     reportExtent n $
     (viewport n T.Vertical) $
     showCursor n (T.Location (x, y - scrollY)) $
-    drawBuffer (get buffer window) (scrollX, scrollY)
+    drawBuffer (window^.buffer) (scrollX, scrollY)
 
 updateBuffer :: Window -> Window
 updateBuffer window =
-  let ls = getLines (get buffer window)
+  let ls = window^.buffer^.lns
   in if length ls == 0
-     then set buffer (oneLine (get buffer window)) window
+     then set buffer (oneLine (window^.buffer)) window
      else window
 
 updateCursor :: Window -> Window
 updateCursor window =
-  let (x, y) = get cursor window
-      l = lineAt (get buffer window) updatedY
-      ls = getLines (get buffer window)
+  let (x, y) = window^.cursor
+      l = lineAt (window^.buffer) updatedY
+      ls = window^.buffer^.lns
       yCap = (length ls) - 1
-      xCap = case (get mode window) of
+      xCap = case window^.mode of
                Insert -> length l
                _ -> (length l) - 1
       updatedX = max 0 (min xCap x)
@@ -117,9 +119,9 @@ updateCursor window =
 
 updateScroll :: (t, Int) -> Window -> Window
 updateScroll (width, height) window =
-  let (cursorX, cursorY) = get cursor window
-      (scrollX, scrollY) = get scroll window
-      ls = (getLines (get buffer window))
+  let (cursorX, cursorY) = window^.cursor
+      (scrollX, scrollY) = window^.scroll
+      ls = window^.buffer^.lns
       yMax = max 0 (length ls - height)
       yMin = 0
   in if (cursorY - scrollY >= height)
@@ -132,29 +134,29 @@ updateScroll (width, height) window =
 
 moveLeft :: Window -> Window
 moveLeft window =
-  let win = modify cursor (\(x,y) -> (x - 1, y)) window
-  in modify column (subtract 1) win
+  let win = over cursor (\(x,y) -> (x - 1, y)) window
+  in over column (subtract 1) win
 
 moveDown :: Window -> Window
-moveDown window = modify cursor (\(x,y) -> (get column window, y + 1)) window
+moveDown window = over cursor (\(x,y) -> (window^.column, y + 1)) window
 
 moveUp :: Window -> Window
-moveUp window = modify cursor (\(x,y) -> (get column window, y - 1)) window
+moveUp window = over cursor (\(x,y) -> (window^.column, y - 1)) window
 
 moveRight :: Window -> Window
 moveRight window =
-  let win = modify cursor (\(x,y) -> (x + 1, y)) window
-  in modify column (+1) win
+  let win = over cursor (\(x,y) -> (x + 1, y)) window
+  in over column (+1) win
 
 moveBol :: Window -> Window
 moveBol window =
-  let win = set cursor (0, (snd (get cursor window))) window
+  let win = set cursor (0, (snd (window^.cursor))) window
   in set column 0 win
 
 moveEol :: Window -> Window
 moveEol window =
-  let (x, y) = get cursor window
-      l =  eol (get buffer window) y
+  let (x, y) = window^.cursor
+      l =  eol (window^.buffer) y
       win = set cursor (l, y) window
   in set column l win
 
@@ -183,7 +185,7 @@ replaceCharMode = set mode ReplaceChar
 
 forwardDelete :: Window -> Window
 forwardDelete window =
-  let (x, y) = get cursor window
+  let (x, y) = window^.cursor
   in if x == 0
      then window
      else let win = removeChar window
@@ -191,46 +193,46 @@ forwardDelete window =
   
 backwardDelete :: Window -> Window
 backwardDelete window =
-  let (x, y) = get cursor window
+  let (x, y) = window^.cursor
   in if x == 0
      then if y == 0
           then window
-          else let win = set buffer (deleteLineAt (get buffer window) (x, y)) window
+          else let win = set buffer (deleteLineAt (window^.buffer) (x, y)) window
                in moveEol (moveUp win)
      else removePrevChar window
 
 addChar :: Char -> Window -> Window
 addChar char window =
-  let win = set buffer (insertCharAt (get buffer window) char (get cursor window)) window
+  let win = set buffer (insertCharAt (window^.buffer) char (window^.cursor)) window
   in moveRight win
   
 addLine :: Window -> Window
 addLine window =
-  let (x, y) = get cursor window
-      win = set buffer (insertLineAt (get buffer window) (x, y)) window
+  let (x, y) = window^.cursor
+      win = set buffer (insertLineAt (window^.buffer) (x, y)) window
   in moveBol (moveDown win)
   
 addLineAbove :: Window -> Window
 addLineAbove window =
-  let (x, y) = get cursor window
-      win = set buffer (insertLineAt (get buffer window) (x, y - 1)) window
+  let (x, y) = window^.cursor
+      win = set buffer (insertLineAt (window^.buffer) (x, y - 1)) window
   in moveBol win
 
 removeLine :: Window -> Window
 removeLine window =
   set buffer
-  (deleteLineAt (get buffer window) (get cursor window))
+  (deleteLineAt (window^.buffer) (window^.cursor))
   (normalMode window)
 
 removeChar :: Window -> Window
 removeChar window =
-  let win = set buffer (deleteCharAt (get buffer window) (get cursor window)) window
+  let win = set buffer (deleteCharAt (window^.buffer) (window^.cursor)) window
   in moveLeft win
 
 removePrevChar :: Window -> Window
 removePrevChar window =
-  let (x, y) = get cursor window
-      win = set buffer (deleteCharAt (get buffer window) (x - 1, y)) window
+  let (x, y) = window^.cursor
+      win = set buffer (deleteCharAt (window^.buffer) (x - 1, y)) window
   in moveLeft win
 
 replaceChar :: Char -> Window -> Window

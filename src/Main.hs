@@ -3,6 +3,7 @@ module Main where
 import System.Directory
 import Control.Monad (void)
 import Brick.Main as M
+import qualified Brick.Focus as F
 import Brick.AttrMap (attrMap)
 import qualified Graphics.Vty as V
 
@@ -13,7 +14,7 @@ import Window
 
 getInitialState :: Editor
 getInitialState =
-  Editor [welcomeBuffer] rootSplit 
+  Editor [welcomeBuffer] rootSplit (F.focusRing [WindowID 0, WindowID 1, WindowID 2])
   where welcomeBuffer = Buffer ["Earthmacs welcomes you in."] getCurrentDirectory
         welcomeWindow = Window welcomeBuffer (0, 0) 0 (0, 0) Normal Nothing (WindowID 0)
         rootSplit = Split Nothing Nothing Nothing (Just welcomeWindow)
