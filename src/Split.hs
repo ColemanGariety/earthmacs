@@ -1,14 +1,14 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 module Split (Split(Split),
               Direction,
-              splitEast,
               direction,
               left,
               right,
               window,
-              handleSplitEvent,
               drawSplit) where
 
+import Data.Data
 import Control.Lens
 import qualified Graphics.Vty as V
 import qualified Brick.Types as T
@@ -29,20 +29,11 @@ data Split =
 
 makeLenses ''Split
 
-drawSplit :: Split -> t -> t1 -> t2 -> t3 -> T.Widget Name
+instance Plated Split where
+  plate f (Split d l r w) = (\l' r' -> Split d l' r' w) <$> traverse f l <*> traverse f r
+  
 drawSplit split width height x y = do
   case split^.window of
     Just win -> drawWindow win width height x y
-    Nothing -> (drawSplit (eliminate (split^.right)) width height x y) <+>
+    Nothing -> (drawSplit (eliminate (split^.left)) width height x y) <+>
                (drawSplit (eliminate (split^.right)) width height x y)
-
-splitEast split =
-  set window Nothing $
-  set direction (Just Horizontal) $
-  set left (Just (set window (Just (set name (WindowID 1) (eliminate (split^.window)))) split)) $
-  set right (Just (set window (Just (set name (WindowID 2) (eliminate (split^.window)))) split)) split
-  
-handleSplitEvent split ev (width, height) =
-  case split^.window of
-    Just win -> set window (Just (handleWindowEvent win ev (width, height))) split
-    Nothing -> split

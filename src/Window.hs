@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 module Window (Window(Window),
                Mode(Normal),
                Name(WindowID),
@@ -35,8 +36,7 @@ data Window =
 
 makeLenses ''Window
 
-handleWindowEvent :: Window -> Event -> (t, Int) -> Window
-handleWindowEvent window ev (width, height) =
+handleWindowEvent ev (width, height) window =
   updateScroll (width, height) $
   updateCursor $
   updateBuffer $
