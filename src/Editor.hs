@@ -1,5 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Editor (Editor(Editor), drawEditor, handleEvent) where
+module Editor (Editor(Editor),
+               drawEditor,
+               focusRing,
+               handleEvent) where
 
 import Control.Lens
 import Data.Monoid

@@ -1,5 +1,6 @@
 module Main where
 
+import Control.Lens
 import System.Directory
 import Control.Monad (void)
 import Brick.Main as M
@@ -19,13 +20,15 @@ getInitialState =
         welcomeWindow = Window welcomeBuffer (0, 0) 0 (0, 0) Normal Nothing (WindowID 0)
         rootSplit = Split Nothing Nothing Nothing (Just welcomeWindow)
 
+chooseCursor = F.focusRingCursor (^.focusRing)
+
 app :: M.App Editor e Name
 app =
   M.App { M.appDraw = drawEditor
         , M.appStartEvent = return
         , M.appHandleEvent = handleEvent
         , M.appAttrMap = const $ attrMap V.defAttr []
-        , M.appChooseCursor = M.showFirstCursor
+        , M.appChooseCursor = chooseCursor
         }
 
 main :: IO ()
