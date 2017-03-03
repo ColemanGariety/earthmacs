@@ -5,6 +5,7 @@ module Editor (Editor(Editor),
                handleEvent) where
 
 import Control.Lens
+import Data.List
 import Data.Monoid
 import Graphics.Vty
 import qualified Brick.Types as T
@@ -34,7 +35,7 @@ handleEvent state (T.VtyEvent ev) =
        EvKey (KChar '\t') [] -> M.continue $ over focusRing F.focusNext state
        _ -> do
          (width, height) <- getExtent n
-         let focusedWindow = getFocusedWindow n (state^.split)
+         let Just focusedWindow = getFocusedWindow n (state^.split)
              focusedBuffer = (state^.buffers)!!(focusedWindow^.bufferIndex)
              (newWindow, newBuffer) = handleWindowEvent ev (width, height) (focusedWindow, focusedBuffer)
              bufferUpdater newBuffer buffers =
@@ -57,7 +58,7 @@ getExtent n = do
                           Nothing -> (0, 0)
   return (width, height) 
 
-getFocusedWindow n s@(Split d l r w) = head (go [] s)
+getFocusedWindow n s@(Split d l r w) = find (\(Window _ _ _ _ _ _ name) -> name == n) (go [] s)
   where go acc (Split _ (Just l) (Just r) Nothing) = acc ++ (go acc l) ++ (go acc r)
         go acc (Split _ _ _ (Just w)) = acc ++ [w]
 
