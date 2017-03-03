@@ -15,7 +15,7 @@ import Window
 
 getInitialState :: Editor
 getInitialState =
-  Editor [welcomeBuffer] rootSplit (F.focusRing [WindowID 0, WindowID 1, WindowID 2])
+  Editor [welcomeBuffer] rootSplit (F.focusRing [WindowID 0])
   where welcomeBuffer = Buffer ["Earthmacs welcomes you in."] getCurrentDirectory
         welcomeWindow = Window 0 (0, 0) 0 (0, 0) Normal Nothing (WindowID 0)
         rootSplit = Split Nothing Nothing Nothing (Just welcomeWindow)

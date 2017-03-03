@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 module Split (Split(Split),
-              Direction,
+              Direction(Horizontal, Vertical),
               direction,
               left,
               right,
@@ -37,5 +37,8 @@ drawSplit buffers split = do
   case split^.window of
     Just win -> let i = win^.bufferIndex
                 in drawWindow (win, buffers!!(win^.bufferIndex))
-    Nothing -> (drawSplit buffers (eliminate (split^.left))) <+>
-               (drawSplit buffers (eliminate (split^.right)))
+    Nothing -> case split^.direction of
+                 Just Horizontal -> (drawSplit buffers (eliminate (split^.left))) <+>
+                               (drawSplit buffers (eliminate (split^.right)))
+                 Just Vertical -> (drawSplit buffers (eliminate (split^.left))) <=>
+                             (drawSplit buffers (eliminate (split^.right)))

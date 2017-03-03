@@ -22,7 +22,7 @@ import Buffer
 
 data Mode = Normal | Insert | ReplaceChar | Delete | Visual deriving (Show, Eq)
 
-data Name = WindowID Integer deriving (Ord, Show, Eq)
+data Name = WindowID Int deriving (Ord, Show, Eq)
 
 data Window =
   Window { _bufferIndex :: Int
