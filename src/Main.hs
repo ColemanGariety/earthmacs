@@ -17,7 +17,7 @@ getInitialState :: Editor
 getInitialState =
   Editor [welcomeBuffer] rootSplit (F.focusRing [WindowID 0, WindowID 1, WindowID 2])
   where welcomeBuffer = Buffer ["Earthmacs welcomes you in."] getCurrentDirectory
-        welcomeWindow = Window welcomeBuffer (0, 0) 0 (0, 0) Normal Nothing (WindowID 0)
+        welcomeWindow = Window 0 (0, 0) 0 (0, 0) Normal Nothing (WindowID 0)
         rootSplit = Split Nothing Nothing Nothing (Just welcomeWindow)
 
 chooseCursor = F.focusRingCursor (^.focusRing)

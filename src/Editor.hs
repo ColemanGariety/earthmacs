@@ -30,21 +30,25 @@ handleEvent state (T.VtyEvent ev) =
   in case ev of
        EvKey (KChar 'c') [MCtrl] -> M.halt state
        EvKey (KChar 'L') [MMeta] -> M.continue $ splitEast n state
-       EvKey (KChar 'h') [MMeta] -> M.continue $ over focusRing F.focusPrev state
-       EvKey (KChar 'l') [MMeta] -> M.continue $ over focusRing F.focusNext state
+       EvKey KBackTab [] -> M.continue $ over focusRing F.focusPrev state
+       EvKey (KChar '\t') [] -> M.continue $ over focusRing F.focusNext state
        _ -> do
          (width, height) <- getExtent n
-         let go split =
+         let focusedWindow = getFocusedWindow n (state^.split)
+             focusedBuffer = (state^.buffers)!!(focusedWindow^.bufferIndex)
+             (newWindow, newBuffer) = handleWindowEvent ev (width, height) (focusedWindow, focusedBuffer)
+             bufferUpdater newBuffer buffers =
+               let (as, bs) = splitAt (newWindow^.bufferIndex) buffers
+               in as ++ [newBuffer] ++ (tail bs)
+             windowUpdater newWindow split =
                case split^.window of
                  Just win -> if win^.name == n
-                             then set window (Just (handleWindowEvent ev (width, height) win)) split
+                             then set window (Just newWindow) split
                              else split
                  Nothing -> split
-         M.continue $ over split (transform go) state
+         M.continue $ set buffers (bufferUpdater newBuffer (state^.buffers)) $ over split (transform (windowUpdater newWindow)) state
 
-drawEditor :: Monad m => Editor -> m (T.Widget Name)
-drawEditor state = do
-  return $ drawSplit (state^.split) 10 10 0 0
+drawEditor state = [drawSplit (state^.buffers) (state^.split)]
 
 getExtent n = do
   mExtent <- M.lookupExtent n
@@ -53,10 +57,14 @@ getExtent n = do
                           Nothing -> (0, 0)
   return (width, height) 
 
+getFocusedWindow n s@(Split d l r w) = head (go [] s)
+  where go acc (Split _ (Just l) (Just r) Nothing) = acc ++ (go acc l) ++ (go acc r)
+        go acc (Split _ _ _ (Just w)) = acc ++ [w]
+
 splitEast n state =
   case state^.split^.window of
     Just win -> if win^.name == n
-                then over focusRing F.focusNext $
+                then set focusRing (F.focusRing [WindowID 1, WindowID 2]) $
                      over split doSplit state
                 else state
     Nothing -> state
