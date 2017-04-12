@@ -29,7 +29,7 @@ eol :: Buffer -> Int -> Int
 eol buffer y = length $ lineAt buffer y
 
 oneLine :: Buffer -> Buffer
-oneLine buffer = set lns [""] buffer
+oneLine = set lns [""] 
 
 charAt :: Buffer -> (Int, Int) -> Char
 charAt buffer (x, y) = ((buffer^.lns)!!y)!!x

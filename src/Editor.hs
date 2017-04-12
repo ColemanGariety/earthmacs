@@ -35,6 +35,7 @@ handleEvent state (T.VtyEvent ev) =
       focusedBuffer = (state^.buffers)!!(focusedWindow^.bufferIndex)
   in case ev of
        EvKey (KChar 'c') [MCtrl] -> M.halt state
+       -- EvKey (KChar 'q') [MCtrl] -> M.continue $ unsplit n state
        EvKey (KChar 'L') [MMeta] -> M.continue $ splitTowards Horizontal n state
        EvKey (KChar 'H') [MMeta] -> M.continue $ splitTowards Horizontal n state
        EvKey (KChar 'J') [MMeta] -> M.continue $ splitTowards Vertical n state
@@ -70,6 +71,16 @@ getWindowNames n s@(Split d l r w) = map (\(Window _ _ _ _ _ _ name) -> name) (t
 
 traverseSplit acc (Split _ (Just l) (Just r) Nothing) = acc ++ (traverseSplit acc l) ++ (traverseSplit acc r)
 traverseSplit acc (Split _ _ _ (Just w)) = acc ++ [w]
+
+-- unsplit n state =
+--   let c = sum $ map (\(WindowID x) -> x) $ getWindowNames n (state^.split)
+--       splitUpdater split = split
+--       doUnsplit s win =
+--         set window (Just win) $
+--         set direction Nothing $
+--         set left Nothing $
+--         set right Nothing s
+--   in updateFocusRing n $ over split (transform splitUpdater) state
 
 splitTowards d n state = do
   let c = sum $ map (\(WindowID x) -> x) $ getWindowNames n (state^.split)

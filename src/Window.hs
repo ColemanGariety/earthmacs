@@ -36,6 +36,8 @@ data Window =
 
 makeLenses ''Window
 
+punctuation = [' ', ',', '.', ';']
+
 handleWindowEvent :: Event -> (t, Int) -> (Window, Buffer) -> (Window, Buffer)
 handleWindowEvent ev (width, height) (window, buffer) =
   updateScroll (width, height) $
@@ -49,8 +51,10 @@ handleWindowEvent ev (width, height) (window, buffer) =
         EvKey (KChar '0') [] -> moveBol (window, buffer)
         EvKey (KChar 'a') [] -> moveRight $ insertMode (window, buffer)
         EvKey (KChar 'A') [] -> append (window, buffer)
+        EvKey (KChar 'b') [] -> prevBow (window, buffer)
         EvKey (KChar 'b') [MCtrl] -> moveUpBy (height - 1) (window, buffer)
         EvKey (KChar 'd') [] -> deleteMode (window, buffer)
+        EvKey (KChar 'e') [] -> nextEow (window, buffer)
         EvKey (KChar 'f') [MCtrl] -> moveDownBy (height - 1) (window, buffer)
         EvKey (KChar 'h') [] -> moveLeft (window, buffer)
         EvKey (KChar 'i') [] -> insertMode (window, buffer)
@@ -60,6 +64,7 @@ handleWindowEvent ev (width, height) (window, buffer) =
         EvKey (KChar 'r') [] -> replaceCharMode (window, buffer)
         EvKey (KChar 'o') [] -> addLine $ insertMode (window, buffer)
         EvKey (KChar 'O') [] -> addLineAbove (insertMode (window, buffer))
+        EvKey (KChar 'w') [] -> nextBow (window, buffer)
         EvKey (KChar 'x') [] -> forwardDelete (window, buffer)
         _ -> (window, buffer)
     ReplaceChar ->
@@ -131,7 +136,7 @@ updateScroll (width, height) (window, buffer) =
           then (set scroll (max 0 cursorX, max yMin cursorY) window, buffer)
           else (window, buffer)
 
--- -- window stuff --
+-- window stuff
 
 moveLeft :: (Window, t) -> (Window, t)
 moveLeft (window, buffer) =
@@ -153,6 +158,8 @@ moveBol :: (Window, t) -> (Window, t)
 moveBol (window, buffer) =
   let win = set cursor (0, (snd (window^.cursor))) window
   in (set column 0 win, buffer)
+
+-- windowbuffer stuff
 
 moveEol :: (Window, Buffer) -> (Window, Buffer)
 moveEol (window, buffer) =
@@ -188,7 +195,7 @@ forwardDelete :: (Window, Buffer) -> (Window, Buffer)
 forwardDelete (window, buffer) =
   let (x, y) = window^.cursor
   in if x == 0
-     then (window, buffer)
+     then removeChar (window, buffer)
      else moveRight $ removeChar (window, buffer)
 
 -- (window, buffer) stuff
@@ -229,4 +236,23 @@ removePrevChar (window, buffer) =
   in (fst $ moveLeft (window, buffer), deleteCharAt buffer (x - 1, y))
 
 replaceChar :: Char -> (Window, Buffer) -> (Window, Buffer)
-replaceChar char (window, buffer) = moveLeft $ addChar char (forwardDelete (window, buffer))
+replaceChar char (window, buffer) = normalMode $ addChar char (forwardDelete (window, buffer))
+
+nextBow :: (Window, Buffer) -> (Window, Buffer)
+nextBow (window, buffer) = go (moveRight (window, buffer))
+  where go (window, buffer)
+          | (fst (window^.cursor)) == eol buffer (snd (window^.cursor)) = (window, buffer)
+          | elem (charAt buffer (window^.cursor)) punctuation = moveRight (window, buffer)
+          | otherwise = go (moveRight (window, buffer))
+
+prevBow :: (Window, Buffer) -> (Window, Buffer)
+prevBow (window, buffer) = go (moveLeft (window, buffer))
+  where go (window, buffer)
+          | (fst (window^.cursor)) == -1 = (window, buffer)
+          | elem (charAt buffer (window^.cursor)) punctuation = moveLeft (window, buffer)
+          | otherwise = go (moveLeft (window, buffer))
+
+nextEow :: (Window, Buffer) -> (Window, Buffer)
+nextEow (window, buffer) =
+  let (x, y) = window^.cursor
+  in (window, buffer)
