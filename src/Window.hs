@@ -138,23 +138,23 @@ updateScroll (width, height) (window, buffer) =
 
 -- window stuff
 
-moveLeft :: (Window, t) -> (Window, t)
+moveLeft :: (Window, Buffer) -> (Window, Buffer)
 moveLeft (window, buffer) =
   let win = over cursor (\(x,y) -> (x - 1, y)) window
   in (over column (subtract 1) win, buffer)
 
-moveDown :: (Window, t) -> (Window, t)
+moveDown :: (Window, Buffer) -> (Window, Buffer)
 moveDown (window, buffer) = (over cursor (\(x,y) -> (window^.column, y + 1)) window, buffer)
 
-moveUp :: (Window, t) -> (Window, t)
+moveUp :: (Window, Buffer) -> (Window, Buffer)
 moveUp (window, buffer) = (over cursor (\(x,y) -> (window^.column, y - 1)) window, buffer)
 
-moveRight :: (Window, t) -> (Window, t)
+moveRight :: (Window, Buffer) -> (Window, Buffer)
 moveRight (window, buffer) =
   let win = over cursor (\(x,y) -> (x + 1, y)) window
   in (over column (+1) win, buffer)
 
-moveBol :: (Window, t) -> (Window, t)
+moveBol :: (Window, Buffer) -> (Window, Buffer)
 moveBol (window, buffer) =
   let win = set cursor (0, (snd (window^.cursor))) window
   in (set column 0 win, buffer)
@@ -168,27 +168,27 @@ moveEol (window, buffer) =
       win = set cursor (l, y) window
   in (set column l win, buffer)
 
-moveDownBy :: (Num t, Eq t) => t -> (Window, t1) -> (Window, t1)
+moveDownBy :: (Num t, Eq t) => t -> (Window, Buffer) -> (Window, Buffer)
 moveDownBy 0 (window, buffer) = (window, buffer)
 moveDownBy height (window, buffer) = moveDownBy (height - 1) (moveDown (window, buffer))
 
-moveUpBy :: (Num t, Eq t) => t -> (Window, t1) -> (Window, t1)
+moveUpBy :: (Num t, Eq t) => t -> (Window, Buffer) -> (Window, Buffer)
 moveUpBy 0 (window, buffer) = (window, buffer)
 moveUpBy height (window, buffer) = moveUpBy (height - 1) (moveUp (window, buffer))
 
 append :: (Window, Buffer) -> (Window, Buffer)
 append (window, buffer) = moveEol (insertMode (window, buffer))
 
-insertMode :: (Window, t) -> (Window, t)
+insertMode :: (Window, Buffer) -> (Window, Buffer)
 insertMode (window, buffer) = (set mode Insert window, buffer)
 
-deleteMode :: (Window, t) -> (Window, t)
+deleteMode :: (Window, Buffer) -> (Window, Buffer)
 deleteMode (window, buffer) = (set mode Delete window, buffer)
 
-normalMode :: (Window, t) -> (Window, t)
+normalMode :: (Window, Buffer) -> (Window, Buffer)
 normalMode (window, buffer) = moveLeft (set mode Normal window, buffer)
 
-replaceCharMode :: (Window, t) -> (Window, t)
+replaceCharMode :: (Window, Buffer) -> (Window, Buffer)
 replaceCharMode (window, buffer) = (set mode ReplaceChar window, buffer)
 
 forwardDelete :: (Window, Buffer) -> (Window, Buffer)

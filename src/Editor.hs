@@ -31,15 +31,15 @@ makeLenses ''Editor
 handleEvent :: Editor -> T.BrickEvent Name e -> T.EventM Name (T.Next Editor)
 handleEvent state (T.VtyEvent ev) =
   let Just n = F.focusGetCurrent (state^.focusRing)
-      Just focusedWindow = getFocusedWindow n (state^.split)
+      Just focusedWindow = getWindowByName n (state^.split)
       focusedBuffer = (state^.buffers)!!(focusedWindow^.bufferIndex)
   in case ev of
        EvKey (KChar 'c') [MCtrl] -> M.halt state
-       -- EvKey (KChar 'q') [MCtrl] -> M.continue $ unsplit n state
-       EvKey (KChar 'L') [MMeta] -> M.continue $ splitTowards Horizontal n state
-       EvKey (KChar 'H') [MMeta] -> M.continue $ splitTowards Horizontal n state
-       EvKey (KChar 'J') [MMeta] -> M.continue $ splitTowards Vertical n state
-       EvKey (KChar 'K') [MMeta] -> M.continue $ splitTowards Vertical n state
+       EvKey (KChar 'q') [MCtrl] -> M.continue $ unsplit n state
+       EvKey (KChar 'L') [MMeta] -> M.continue $ splitAs Horizontal n state
+       EvKey (KChar 'H') [MMeta] -> M.continue $ splitAs Horizontal n state
+       EvKey (KChar 'J') [MMeta] -> M.continue $ splitAs Vertical n state
+       EvKey (KChar 'K') [MMeta] -> M.continue $ splitAs Vertical n state
        EvKey KBackTab [] -> M.continue $ over focusRing F.focusPrev state
        EvKey (KChar '\t') [] -> M.continue $ over focusRing F.focusNext state
        _ -> do
@@ -65,36 +65,38 @@ getExtent n = do
                           Nothing -> (0, 0)
   return (width, height) 
 
-getFocusedWindow n s@(Split d l r w) = find (\(Window _ _ _ _ _ _ name) -> name == n) (traverseSplit [] s)
+-- returns all the splits as a list
+getSplits :: [Window] -> Split -> [Window]
+getSplits acc (Split _ (Just l) (Just r) Nothing) = acc ++ (getSplits acc l) ++ (getSplits acc r)
+getSplits acc (Split _ _ _ (Just w)) = acc ++ [w]
 
-getWindowNames n s@(Split d l r w) = map (\(Window _ _ _ _ _ _ name) -> name) (traverseSplit [] s)
+getWindowByName :: Name -> Split -> Maybe Window
+getWindowByName n s@(Split d l r w) = find (\(Window _ _ _ _ _ _ name) -> name == n) (getSplits [] s)
 
-traverseSplit acc (Split _ (Just l) (Just r) Nothing) = acc ++ (traverseSplit acc l) ++ (traverseSplit acc r)
-traverseSplit acc (Split _ _ _ (Just w)) = acc ++ [w]
+getWindowNames :: Split -> [Name]
+getWindowNames s@(Split d l r w) = map (\(Window _ _ _ _ _ _ name) -> name) (getSplits [] s)
 
--- unsplit n state =
---   let c = sum $ map (\(WindowID x) -> x) $ getWindowNames n (state^.split)
---       splitUpdater split = split
---       doUnsplit s win =
---         set window (Just win) $
---         set direction Nothing $
---         set left Nothing $
---         set right Nothing s
---   in updateFocusRing n $ over split (transform splitUpdater) state
+-- the first name in the ring will be focused
+-- the variable n will designate the first
+setFocusRing :: t -> Editor -> Editor
+setFocusRing n state = set focusRing (F.focusRing (getWindowNames (state^.split))) state
 
-splitTowards d n state = do
-  let c = sum $ map (\(WindowID x) -> x) $ getWindowNames n (state^.split)
+-- not implemented
+unsplit :: Name -> Editor -> Editor
+unsplit n state = state
+
+-- this could be cleaner probably
+splitAs :: Direction -> Name -> Editor -> Editor
+splitAs d n state = do
+  let c = sum $ map (\(WindowID x) -> x) $ getWindowNames (state^.split)
   let splitUpdater split =
         case split^.window of
-          Just win -> if win^.name == n
-                      then doSplit split
-                      else split
+          Just win -> if win^.name == n then createSplit split else split
           Nothing -> split
-      doSplit split =
+      createSplit split =
         set window Nothing $
         set direction (Just d) $
         set left (Just (Split Nothing Nothing Nothing (Just (set name (WindowID (c + 1)) (eliminate (split^.window)))))) $
         set right (Just (Split Nothing Nothing Nothing (Just (set name (WindowID (c + 2)) (eliminate (split^.window)))))) split
-  updateFocusRing n $ over split (transform splitUpdater) state
+  setFocusRing n $ over split (transform splitUpdater) state
 
-updateFocusRing n state = set focusRing (F.focusRing (getWindowNames n (state^.split))) state

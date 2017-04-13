@@ -23,6 +23,7 @@ data Buffer =
 
 makeLenses ''Buffer
 
+drawBuffer :: Buffer -> (t, Int) -> T.Widget n
 drawBuffer buffer (scrollX, scrollY) = str (unlines (drop scrollY (buffer^.lns)))
 
 eol :: Buffer -> Int -> Int
