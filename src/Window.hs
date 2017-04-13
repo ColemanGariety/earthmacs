@@ -51,10 +51,10 @@ handleWindowEvent ev (width, height) (window, buffer) =
         EvKey (KChar '0') [] -> moveBol (window, buffer)
         EvKey (KChar 'a') [] -> moveRight $ insertMode (window, buffer)
         EvKey (KChar 'A') [] -> append (window, buffer)
-        EvKey (KChar 'b') [] -> prevBow (window, buffer)
+        EvKey (KChar 'b') [] -> movePrevBow (window, buffer)
         EvKey (KChar 'b') [MCtrl] -> moveUpBy (height - 1) (window, buffer)
         EvKey (KChar 'd') [] -> deleteMode (window, buffer)
-        EvKey (KChar 'e') [] -> nextEow (window, buffer)
+        EvKey (KChar 'e') [] -> moveNextEow (window, buffer)
         EvKey (KChar 'f') [MCtrl] -> moveDownBy (height - 1) (window, buffer)
         EvKey (KChar 'h') [] -> moveLeft (window, buffer)
         EvKey (KChar 'i') [] -> insertMode (window, buffer)
@@ -64,7 +64,7 @@ handleWindowEvent ev (width, height) (window, buffer) =
         EvKey (KChar 'r') [] -> replaceCharMode (window, buffer)
         EvKey (KChar 'o') [] -> addLine $ insertMode (window, buffer)
         EvKey (KChar 'O') [] -> addLineAbove (insertMode (window, buffer))
-        EvKey (KChar 'w') [] -> nextBow (window, buffer)
+        EvKey (KChar 'w') [] -> moveNextBow (window, buffer)
         EvKey (KChar 'x') [] -> forwardDelete (window, buffer)
         _ -> (window, buffer)
     ReplaceChar ->
@@ -238,21 +238,19 @@ removePrevChar (window, buffer) =
 replaceChar :: Char -> (Window, Buffer) -> (Window, Buffer)
 replaceChar char (window, buffer) = normalMode $ addChar char (forwardDelete (window, buffer))
 
-nextBow :: (Window, Buffer) -> (Window, Buffer)
-nextBow (window, buffer) = go (moveRight (window, buffer))
-  where go (window, buffer)
-          | (fst (window^.cursor)) == eol buffer (snd (window^.cursor)) = (window, buffer)
-          | elem (charAt buffer (window^.cursor)) punctuation = moveRight (window, buffer)
-          | otherwise = go (moveRight (window, buffer))
+moveNextBow :: (Window, Buffer) -> (Window, Buffer)
+moveNextBow (window, buffer) =
+  let (x, y) = window^.cursor
+      nb = nextBow buffer (x, y)
+  in (set cursor (nb, y) window, buffer)
 
-prevBow :: (Window, Buffer) -> (Window, Buffer)
-prevBow (window, buffer) = go (moveLeft (window, buffer))
-  where go (window, buffer)
-          | (fst (window^.cursor)) == -1 = (window, buffer)
-          | elem (charAt buffer (window^.cursor)) punctuation = moveLeft (window, buffer)
-          | otherwise = go (moveLeft (window, buffer))
+movePrevBow :: (Window, Buffer) -> (Window, Buffer)
+movePrevBow (window, buffer) =
+  let (x, y) = window^.cursor
+      nb = prevBow buffer (x, y)
+  in (set cursor (nb, y) window, buffer)
 
-nextEow :: (Window, Buffer) -> (Window, Buffer)
-nextEow (window, buffer) =
+moveNextEow :: (Window, Buffer) -> (Window, Buffer)
+moveNextEow (window, buffer) =
   let (x, y) = window^.cursor
   in (window, buffer)

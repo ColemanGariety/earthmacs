@@ -88,15 +88,14 @@ unsplit n state = state
 -- this could be cleaner probably
 splitAs :: Direction -> Name -> Editor -> Editor
 splitAs d n state = do
-  let c = sum $ map (\(WindowID x) -> x) $ getWindowNames (state^.split)
-  let splitUpdater split =
-        case split^.window of
-          Just win -> if win^.name == n then createSplit split else split
-          Nothing -> split
+  let lastId = sum $ map (\(WindowID x) -> x) $ getWindowNames (state^.split)
+      splitUpdater split@(Split _ _ _ (Just win)) = if win^.name == n then createSplit split else split
+      splitUpdater split@(Split _ _ _ (Nothing)) = split
       createSplit split =
         set window Nothing $
         set direction (Just d) $
-        set left (Just (Split Nothing Nothing Nothing (Just (set name (WindowID (c + 1)) (eliminate (split^.window)))))) $
-        set right (Just (Split Nothing Nothing Nothing (Just (set name (WindowID (c + 2)) (eliminate (split^.window)))))) split
+        set left (Just (Split Nothing Nothing Nothing (Just (set name (WindowID (lastId + 1)) (eliminate (split^.window)))))) $
+        set right (Just (Split Nothing Nothing Nothing (Just (set name (WindowID (lastId + 2)) (eliminate (split^.window)))))) $
+        split
   setFocusRing n $ over split (transform splitUpdater) state
 

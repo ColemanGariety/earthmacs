@@ -4,6 +4,8 @@ module Buffer (Buffer(Buffer),
                oneLine,
                eol,
                lns,
+               nextBow,
+               prevBow,
                charAt,
                lineAt,
                insertCharAt,
@@ -13,6 +15,8 @@ module Buffer (Buffer(Buffer),
 
 import Control.Lens
 import Data.List
+import Data.Char
+import Util
 import qualified Brick.Types as T
 import Brick.Widgets.Core
 
@@ -28,6 +32,22 @@ drawBuffer buffer (scrollX, scrollY) = str (unlines (drop scrollY (buffer^.lns))
 
 eol :: Buffer -> Int -> Int
 eol buffer y = length $ lineAt buffer y
+
+nextBow :: Buffer -> (Int, Int) -> Int
+nextBow buffer (x, y) =
+  let (as, bs) = splitAt x (lineAt buffer y)
+      a = eliminate $ findIndex (\c -> isSpace c) bs
+      (cs, ds) = splitAt a bs
+      b = eliminate $ findIndex (\c -> not (isSpace c)) ds
+  in x + a + b
+
+prevBow :: Buffer -> (Int, Int) -> Int
+prevBow buffer (x, y) =
+  let (as, bs) = splitAt x (lineAt buffer y)
+      a = eliminate $ findIndex (\c -> isSpace c) (reverse as)
+      (cs, ds) = splitAt a bs
+      b = eliminate $ findIndex (\c -> not (isSpace c)) (reverse cs)
+  in x - a - b
 
 oneLine :: Buffer -> Buffer
 oneLine = set lns [""] 
