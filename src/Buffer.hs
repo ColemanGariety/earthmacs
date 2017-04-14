@@ -45,8 +45,9 @@ eof buffer = length $ buffer^.lns
 -- all four are slightly different
 
 nextBow :: Buffer -> (Int, Int) -> (Int, Int)
-nextBow buffer (sx, sy) = go False (sx, sy)
+nextBow buffer (sx, sy) = go' False (sx, sy)
   where go found (x, y)
+          | found && x + 1 >= eol buffer y = (x, y)
           | found && (not (isSpace (charAt buffer (x, y)))) = (x, y)
           | not found && isSpace (charAt buffer (x, y)) = go' True (x, y)
           | otherwise = go' found (x, y)
