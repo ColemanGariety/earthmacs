@@ -42,6 +42,9 @@ handleEvent state (T.VtyEvent ev) =
        EvKey (KChar 'K') [MMeta] -> M.continue $ splitAs Vertical n state
        EvKey KBackTab [] -> M.continue $ over focusRing F.focusPrev state
        EvKey (KChar '\t') [] -> M.continue $ over focusRing F.focusNext state
+
+       -- other events get delegated to the window
+       -- a (Window, Buffer) pair is transformed
        _ -> do
          (width, height) <- getExtent n
          let (newWindow, newBuffer) = handleWindowEvent ev (width, height) (focusedWindow, focusedBuffer)

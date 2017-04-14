@@ -59,11 +59,12 @@ handleWindowEvent ev (width, height) (window, buffer) =
         EvKey (KChar 'h') [] -> moveLeft (window, buffer)
         EvKey (KChar 'i') [] -> insertMode (window, buffer)
         EvKey (KChar 'j') [] -> moveDown (window, buffer)
+        EvKey (KChar 'J') [] -> joinNextLine (window, buffer)
         EvKey (KChar 'k') [] -> moveUp (window, buffer)
         EvKey (KChar 'l') [] -> moveRight (window, buffer)
         EvKey (KChar 'r') [] -> replaceCharMode (window, buffer)
-        EvKey (KChar 'o') [] -> addLine $ insertMode (window, buffer)
-        EvKey (KChar 'O') [] -> addLineAbove (insertMode (window, buffer))
+        EvKey (KChar 'o') [] -> addLineBelow $ insertMode (window, buffer)
+        EvKey (KChar 'O') [] -> addLineAbove $ insertMode (window, buffer)
         EvKey (KChar 'w') [] -> moveNextBow (window, buffer)
         EvKey (KChar 'x') [] -> forwardDelete (window, buffer)
         _ -> (window, buffer)
@@ -80,7 +81,7 @@ handleWindowEvent ev (width, height) (window, buffer) =
         _ -> normalMode (window, buffer)
     Delete ->
       case ev of
-        EvKey (KChar 'd') [] -> removeLine (window, buffer)
+        EvKey (KChar 'd') [] -> moveBol $ removeLine (window, buffer)
         _ -> normalMode (window, buffer)
     Visual ->
       case ev of
@@ -206,8 +207,15 @@ backwardDelete (window, buffer) =
   in if x == 0
      then if y == 0
           then (window, buffer)
-          else moveEol (moveUp (window, buffer))
+          else (fst $ moveEol $ moveUp (window, buffer), joinLinesAt buffer (x, y))
      else removePrevChar (window, buffer)
+
+joinNextLine :: (Window, Buffer) -> (Window, Buffer)
+joinNextLine (window, buffer) =
+  let (x, y) = window^.cursor
+  in if y + 1 == eof buffer
+     then moveEol (window, buffer)
+     else (fst $ moveEol (window, buffer), joinLinesAt buffer (eol buffer y, y + 1))
 
 addChar :: Char -> (Window, Buffer) -> (Window, Buffer)
 addChar char (window, buffer) =
@@ -221,7 +229,12 @@ addLine (window, buffer) =
 addLineAbove :: (Window, Buffer) -> (Window, Buffer)
 addLineAbove (window, buffer) =
   let (x, y) = window^.cursor
-  in (fst $ moveBol (window, buffer), insertLineAt buffer (x, y - 1))
+  in (fst $ moveBol (window, buffer), insertLineAt buffer (0, y))
+
+addLineBelow :: (Window, Buffer) -> (Window, Buffer)
+addLineBelow (window, buffer) =
+  let (x, y) = window^.cursor
+  in (fst $ moveDown $ moveBol (window, buffer), insertLineAt buffer (eol buffer y, y))
 
 removeLine :: (Window, Buffer) -> (Window, Buffer)
 removeLine (window, buffer) = (fst (normalMode (window, buffer)), deleteLineAt buffer (window^.cursor))
@@ -239,18 +252,14 @@ replaceChar :: Char -> (Window, Buffer) -> (Window, Buffer)
 replaceChar char (window, buffer) = normalMode $ addChar char (forwardDelete (window, buffer))
 
 moveNextBow :: (Window, Buffer) -> (Window, Buffer)
-moveNextBow (window, buffer) =
-  let (x, y) = window^.cursor
-      nb = nextBow buffer (x, y)
-  in (set cursor (nb, y) window, buffer)
+moveNextBow (window, buffer) = (set cursor (nextBow buffer (window^.cursor)) window, buffer)
 
 movePrevBow :: (Window, Buffer) -> (Window, Buffer)
-movePrevBow (window, buffer) =
-  let (x, y) = window^.cursor
-      nb = prevBow buffer (x, y)
-  in (set cursor (nb, y) window, buffer)
+movePrevBow (window, buffer) = (set cursor (prevBow buffer (window^.cursor)) window, buffer)
 
 moveNextEow :: (Window, Buffer) -> (Window, Buffer)
-moveNextEow (window, buffer) =
-  let (x, y) = window^.cursor
-  in (window, buffer)
+moveNextEow (window, buffer) = (set cursor (nextEow buffer (window^.cursor)) window, buffer)
+
+-- does't work yet
+-- movePrevEow :: (Window, Buffer) -> (Window, Buffer)
+-- movePrevEow (window, buffer) = (set cursor (prevEow buffer (window^.cursor)) window, buffer) 
