@@ -10,6 +10,7 @@ import Control.Monad.IO.Class
 import Control.Monad (replicateM)
 import Data.List
 import Data.Monoid
+import Data.Maybe
 import Graphics.Vty
 import qualified Brick.Types as T
 import qualified Brick.Main as M
@@ -79,26 +80,46 @@ getWindowByName n s@(Split d l r w) = find (\(Window _ _ _ _ _ _ name) -> name =
 getWindowNames :: Split -> [Name]
 getWindowNames s@(Split d l r w) = map (\(Window _ _ _ _ _ _ name) -> name) (getSplits [] s)
 
+-- this rebuilds the focus ring by traversing
+-- the tree for the window names.
 -- the first name in the ring will be focused
--- the variable n will designate the first
-setFocusRing :: t -> Editor -> Editor
-setFocusRing n state = set focusRing (F.focusRing (getWindowNames (state^.split))) state
+-- the variable n will designate the first.
+setFocusRing n state =
+  let names = getWindowNames (state^.split)
+      (hs, ts) = splitAt (eliminate (findIndex (\name -> name == n) names)) names
+  in set focusRing (F.focusRing (head ts : (hs ++ tail ts))) state
 
 -- not implemented
 unsplit :: Name -> Editor -> Editor
-unsplit n state = state
-
+unsplit n state =
+  let splitUpdater split@(Split _ _ _ (Just win)) = split
+      splitUpdater split@(Split _ (Just l) (Just r) (Nothing)) =
+        if isJust (l^.window) && ((eliminate (l^.window))^.name) == n
+        then doUnsplit l (eliminate (l^.window))
+        else if isJust (r^.window) && ((eliminate (r^.window))^.name) == n
+             then doUnsplit r (eliminate (r^.window))
+             else split
+      doUnsplit s win =
+        set window (Just win) $
+        set direction Nothing $
+        set left Nothing $
+        set right Nothing $
+        s
+  in over split (transform splitUpdater) state
+  
 -- this could be cleaner probably
 splitAs :: Direction -> Name -> Editor -> Editor
-splitAs d n state = do
+splitAs d n state =
   let lastId = sum $ map (\(WindowID x) -> x) $ getWindowNames (state^.split)
+      nextId = (WindowID (lastId + 1))
+      nextId' = (WindowID (lastId + 2))
       splitUpdater split@(Split _ _ _ (Just win)) = if win^.name == n then createSplit split else split
       splitUpdater split@(Split _ _ _ (Nothing)) = split
       createSplit split =
         set window Nothing $
         set direction (Just d) $
-        set left (Just (Split Nothing Nothing Nothing (Just (set name (WindowID (lastId + 1)) (eliminate (split^.window)))))) $
-        set right (Just (Split Nothing Nothing Nothing (Just (set name (WindowID (lastId + 2)) (eliminate (split^.window)))))) $
+        set left (Just (Split Nothing Nothing Nothing (Just (set name nextId (eliminate (split^.window)))))) $
+        set right (Just (Split Nothing Nothing Nothing (Just (set name nextId' (eliminate (split^.window)))))) $
         split
-  setFocusRing n $ over split (transform splitUpdater) state
+  in setFocusRing nextId $ over split (transform splitUpdater) state
 
