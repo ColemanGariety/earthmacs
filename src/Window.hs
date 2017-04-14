@@ -10,9 +10,12 @@ module Window (Window(Window),
 
 import Control.Lens
 import Graphics.Vty hiding (Mode, showCursor)
+import qualified Graphics.Vty as V
 import qualified Brick.Widgets.Center as C
 import qualified Brick.Widgets.Border as B
 import qualified Brick.Types as T
+import Brick.Util (fg, bg, on)
+import qualified Brick.AttrMap as A
 import Brick.Widgets.Core as C
 import Brick.Widgets.Border.Style
 import Brick.Widgets.Border
@@ -91,18 +94,22 @@ handleWindowEvent ev (width, height) (window, buffer) =
         EvKey (KChar 'l') [] -> moveRight (window, buffer)
         _ -> normalMode (window, buffer)
 
-drawWindow :: (Window, Buffer) -> T.Widget Name
-drawWindow (window, buffer) =
+drawWindow :: (Window, Buffer) -> Bool -> T.Widget Name
+drawWindow (window, buffer) focused =
   let (x, y) = window^.cursor
       (scrollX, scrollY) = window^.scroll
       n = window^.name
+      borderMappings = if focused
+                       then [(B.borderAttr, V.blue `on` V.brightBlack)]
+                       else []
   in withBorderStyle unicodeBold $
-    border $
-    C.center $
-    reportExtent n $
-    (viewport n T.Vertical) $
-    showCursor n (T.Location (x, y - scrollY)) $
-    drawBuffer buffer (scrollX, scrollY)
+     C.updateAttrMap (A.applyAttrMappings borderMappings) $
+     border $
+     C.center $
+     reportExtent n $
+     (viewport n T.Vertical) $
+     showCursor n (T.Location (x, y - scrollY)) $
+     drawBuffer buffer (scrollX, scrollY)
 
 updateBuffer :: (t, Buffer) -> (t, Buffer)
 updateBuffer (window, buffer) =

@@ -14,6 +14,7 @@ import qualified Graphics.Vty as V
 import qualified Brick.Types as T
 import Brick.Widgets.Core
 import Graphics.Vty hiding (Mode, showCursor)
+import qualified Brick.Focus as F
 
 import Buffer
 import Window
@@ -33,12 +34,13 @@ makeLenses ''Split
 instance Plated Split where
   plate f (Split d l r w) = (\l' r' -> Split d l' r' w) <$> traverse f l <*> traverse f r
 
-drawSplit buffers split = do
+drawSplit buffers split focusRing = do
   case split^.window of
     Just win -> let i = win^.bufferIndex
-                in drawWindow (win, buffers!!(win^.bufferIndex))
+                    focused = (eliminate $ F.focusGetCurrent focusRing) == (win^.name)
+                in drawWindow (win, buffers!!(win^.bufferIndex)) focused
     Nothing -> case split^.direction of
-                 Just Horizontal -> (drawSplit buffers (eliminate (split^.left))) <+>
-                               (drawSplit buffers (eliminate (split^.right)))
-                 Just Vertical -> (drawSplit buffers (eliminate (split^.left))) <=>
-                             (drawSplit buffers (eliminate (split^.right)))
+                 Just Horizontal -> (drawSplit buffers (eliminate (split^.left)) focusRing) <+>
+                               (drawSplit buffers (eliminate (split^.right)) focusRing)
+                 Just Vertical -> (drawSplit buffers (eliminate (split^.left)) focusRing) <=>
+                             (drawSplit buffers (eliminate (split^.right)) focusRing)

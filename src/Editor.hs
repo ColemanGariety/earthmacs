@@ -59,7 +59,7 @@ handleEvent state (T.VtyEvent ev) =
                  Nothing -> split
          M.continue $ set buffers (bufferUpdater newBuffer (state^.buffers)) $ over split (transform (windowUpdater newWindow)) state
 
-drawEditor state = [drawSplit (state^.buffers) (state^.split)]
+drawEditor state = [drawSplit (state^.buffers) (state^.split) (state^.focusRing)]
 
 getExtent n = do
   mExtent <- M.lookupExtent n
