@@ -13,10 +13,9 @@ import Editor
 import Buffer
 import Window
 
-getInitialState :: Editor
-getInitialState =
+getInitialState path =
   Editor [welcomeBuffer] rootSplit (F.focusRing [WindowID 0]) Nothing EditorNormal
-  where welcomeBuffer = Buffer ["Earthmacs welcomes you in."] getCurrentDirectory
+  where welcomeBuffer = Buffer ["Earthmacs welcomes you in."] path
         welcomeWindow = Window 0 (0, 0) 0 (0, 0) Normal Nothing (WindowID 0)
         rootSplit = Split Nothing Nothing Nothing (Just welcomeWindow)
 
@@ -32,4 +31,6 @@ app =
         }
 
 main :: IO ()
-main = void $ M.defaultMain app getInitialState
+main = do
+  path <- getCurrentDirectory
+  void $ M.defaultMain app (getInitialState path)

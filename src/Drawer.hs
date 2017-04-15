@@ -10,7 +10,7 @@ import qualified Brick.Types as T
 import Window
 
 data Drawer =
-  Drawer { _value :: String
+  Drawer { _value :: FilePath
          , _options :: [String]
          , _index :: Integer
          , _scroll :: Integer
@@ -20,6 +20,6 @@ makeLenses ''Drawer
 
 handleDrawerEvent state = state
 
-drawDrawer n (Just drawer) focusRing  =
-  showCursor DrawerID (T.Location (0, 0)) $
+drawDrawer n (Just drawer) focusRing =
+  showCursor DrawerID (T.Location (length (drawer^.value), 0)) $
   str (drawer^.value)

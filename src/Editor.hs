@@ -43,7 +43,7 @@ handleEvent state (T.VtyEvent ev) =
   in case state^.editorMode of
        EditorExecute ->
          case ev of
-           EvKey (KChar 'f') [MCtrl] -> M.continue $ editorFindFilesMode n state
+           EvKey (KChar 'f') [MCtrl] -> M.continue $ editorFindFilesMode n state focusedBuffer
            _ -> M.continue $ editorNormalMode state
        EditorFindFiles ->
          case ev of
@@ -144,17 +144,18 @@ splitAs d n state =
         split
   in setFocusRing nextId $ over split (transform splitUpdater) state
 
-editorFindFilesMode n state =
-  set drawer (Just (Drawer "foo" ["bar"] 0 0)) $
+editorFindFilesMode n state buffer =
+  set drawer (Just (Drawer (getPath buffer) ["bar"] 0 0)) $
   set focusRing (F.focusRing [DrawerID]) $
   set editorMode EditorFindFiles $
   state
   
 editorNormalMode state =
-  set editorMode EditorNormal $
-  set drawer Nothing $
-  setFocusRing (WindowID 0) $
-  state
+  let names = getWindowNames (state^.split)
+  in set editorMode EditorNormal $
+     set drawer Nothing $
+     setFocusRing (names!!0) $
+     state
   
 editorExecuteMode state =
   set editorMode EditorExecute $

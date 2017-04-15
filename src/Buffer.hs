@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Buffer (Buffer(Buffer),
+               getPath,
                drawBuffer,
                oneLine,
                eol,
@@ -17,6 +18,9 @@ module Buffer (Buffer(Buffer),
                deleteLineAt) where
 
 import Control.Lens
+import Control.Monad.IO.Class
+import System.Directory
+import Data.Foldable (foldMap)
 import Data.List
 import Data.Char
 import Util
@@ -25,7 +29,7 @@ import Brick.Widgets.Core
 
 data Buffer =
   Buffer { _lns :: [String]
-         , _path :: IO FilePath
+         , _path :: FilePath
          }
 
 makeLenses ''Buffer
@@ -38,6 +42,8 @@ eol buffer y = length $ lineAt buffer y
 
 eof :: Buffer -> Int
 eof buffer = length $ buffer^.lns
+
+getPath buffer = buffer^.path
 
 -- in these word-location equations
 -- go checks for whitespace
