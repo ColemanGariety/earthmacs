@@ -2,8 +2,9 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 module Window (Window(Window),
                Mode(Normal),
-               Name(WindowID),
+               Name(WindowID, DrawerID),
                name,
+               mode,
                bufferIndex,
                handleWindowEvent,
                drawWindow) where
@@ -25,7 +26,7 @@ import Buffer
 
 data Mode = Normal | Insert | ReplaceChar | Delete | Visual deriving (Show, Eq)
 
-data Name = WindowID Int deriving (Ord, Show, Eq)
+data Name = DrawerID | WindowID Int deriving (Ord, Show, Eq)
 
 data Window =
   Window { _bufferIndex :: Int

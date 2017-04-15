@@ -1,10 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Editor (Editor(Editor),
+               EditorMode(EditorNormal),
                drawEditor,
                focusRing,
                handleEvent) where
 
-import System.Random hiding (split)
 import Control.Lens
 import Control.Monad.IO.Class
 import Control.Monad (replicateM)
@@ -15,16 +15,22 @@ import Graphics.Vty
 import qualified Brick.Types as T
 import qualified Brick.Main as M
 import qualified Brick.Focus as F
+import Brick.Widgets.Core
 
+import Drawer
 import Split
 import Window
 import Buffer
 import Util
 
+data EditorMode = EditorNormal | EditorExecute | EditorFindFiles
+
 data Editor =
   Editor { _buffers :: [Buffer]
          , _split :: Split
          , _focusRing :: F.FocusRing Name
+         , _drawer :: Maybe Drawer
+         , _editorMode :: EditorMode
          }
 
 makeLenses ''Editor
@@ -34,33 +40,48 @@ handleEvent state (T.VtyEvent ev) =
   let Just n = F.focusGetCurrent (state^.focusRing)
       Just focusedWindow = getWindowByName n (state^.split)
       focusedBuffer = (state^.buffers)!!(focusedWindow^.bufferIndex)
-  in case ev of
-       EvKey (KChar 'c') [MCtrl] -> M.halt state
-       EvKey (KChar 'q') [MCtrl] -> M.continue $ unsplit n state
-       EvKey (KChar 'L') [MMeta] -> M.continue $ splitAs Horizontal n state
-       EvKey (KChar 'H') [MMeta] -> M.continue $ splitAs Horizontal n state
-       EvKey (KChar 'J') [MMeta] -> M.continue $ splitAs Vertical n state
-       EvKey (KChar 'K') [MMeta] -> M.continue $ splitAs Vertical n state
-       EvKey KBackTab [] -> M.continue $ over focusRing F.focusPrev state
-       EvKey (KChar '\t') [] -> M.continue $ over focusRing F.focusNext state
+  in case state^.editorMode of
+       EditorExecute ->
+         case ev of
+           EvKey (KChar 'f') [MCtrl] -> M.continue $ editorFindFilesMode n state
+           _ -> M.continue $ editorNormalMode state
+       EditorFindFiles ->
+         case ev of
+           EvKey (KChar 'g') [MCtrl] -> M.continue $ editorNormalMode state
+           _ -> M.continue $ handleDrawerEvent state
+       EditorNormal ->
+         case ev of
+           EvKey (KChar 'x') [MCtrl] -> M.continue $ editorExecuteMode state
+           EvKey (KChar 'c') [MCtrl] -> M.halt state
+           EvKey (KChar 'q') [MCtrl] -> M.continue $ unsplit n state
+           EvKey (KChar 'L') [MMeta] -> M.continue $ splitAs Horizontal n state
+           EvKey (KChar 'H') [MMeta] -> M.continue $ splitAs Horizontal n state
+           EvKey (KChar 'J') [MMeta] -> M.continue $ splitAs Vertical n state
+           EvKey (KChar 'K') [MMeta] -> M.continue $ splitAs Vertical n state
+           EvKey KBackTab [] -> M.continue $ over focusRing F.focusPrev state
+           EvKey (KChar '\t') [] -> M.continue $ over focusRing F.focusNext state
+           -- other events get delegated to the window
+           -- a (Window, Buffer) pair is transformed
+           _ -> do
+             (width, height) <- getExtent n
+             let (newWindow, newBuffer) = handleWindowEvent ev (width, height) (focusedWindow, focusedBuffer)
+                 bufferUpdater newBuffer buffers =
+                   let (as, bs) = splitAt (newWindow^.bufferIndex) buffers
+                   in as ++ [newBuffer] ++ (tail bs)
+                 windowUpdater newWindow split =
+                   case split^.window of
+                     Just win -> if win^.name == n
+                                 then set window (Just newWindow) split
+                                 else split
+                     Nothing -> split
+             M.continue $ set buffers (bufferUpdater newBuffer (state^.buffers)) $ over split (transform (windowUpdater newWindow)) $ state
 
-       -- other events get delegated to the window
-       -- a (Window, Buffer) pair is transformed
-       _ -> do
-         (width, height) <- getExtent n
-         let (newWindow, newBuffer) = handleWindowEvent ev (width, height) (focusedWindow, focusedBuffer)
-             bufferUpdater newBuffer buffers =
-               let (as, bs) = splitAt (newWindow^.bufferIndex) buffers
-               in as ++ [newBuffer] ++ (tail bs)
-             windowUpdater newWindow split =
-               case split^.window of
-                 Just win -> if win^.name == n
-                             then set window (Just newWindow) split
-                             else split
-                 Nothing -> split
-         M.continue $ set buffers (bufferUpdater newBuffer (state^.buffers)) $ over split (transform (windowUpdater newWindow)) state
-
-drawEditor state = [drawSplit (state^.buffers) (state^.split) (state^.focusRing)]
+drawEditor state =
+  let Just n = F.focusGetCurrent (state^.focusRing)
+  in if isJust (state^.drawer)
+     then [drawSplit (state^.buffers) (state^.split) (state^.focusRing) <=>
+           drawDrawer n (state^.drawer) (state^.focusRing)]
+     else [drawSplit (state^.buffers) (state^.split) (state^.focusRing)]
 
 getExtent n = do
   mExtent <- M.lookupExtent n
@@ -123,3 +144,19 @@ splitAs d n state =
         split
   in setFocusRing nextId $ over split (transform splitUpdater) state
 
+editorFindFilesMode n state =
+  set drawer (Just (Drawer "foo" ["bar"] 0 0)) $
+  set focusRing (F.focusRing [DrawerID]) $
+  set editorMode EditorFindFiles $
+  state
+  
+editorNormalMode state =
+  set editorMode EditorNormal $
+  set drawer Nothing $
+  setFocusRing (WindowID 0) $
+  state
+  
+editorExecuteMode state =
+  set editorMode EditorExecute $
+  set drawer Nothing $
+  state
